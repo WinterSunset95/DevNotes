@@ -94,3 +94,39 @@ const handleImageChange = (e) => {
 }
 ```
 You can then use the `url` to display the image on the client side.
+
+- [Upload directly to S3 from the client](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/s3-example-photo-album.html)
+https://docs.aws.amazon.com/AmazonS3/latest/userguide/example_s3_Scenario_PresignedUrl_section.html
+Create presigned URL on the server
+```
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { fromIni } from '@aws-sdk/credential-provider-ini'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+
+export const getPresignedUrl = async (key: string) => {
+    const client = new S3Client({
+        credentials: fromIni(),
+        region: 'us-west-2',
+    })
+    const command = new PutObjectCommand({
+        Bucket: 'my-bucket',
+        Key: key,
+    })
+    return getSignedUrl(client, command, { expiresIn: 3600 })
+}
+```
+Use this from the client javascript
+```
+import { getPresignedUrl } from 'whateverfile'
+const url = await getPresignedUrl('my-key')
+```
+Then use the `url` to upload the file to S3
+```
+const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+        'Content-Length': file.size,
+    },
+    body: JSON.stringify
+})
+```
