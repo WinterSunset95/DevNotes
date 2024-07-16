@@ -130,3 +130,20 @@ const response = await fetch(url, {
     body: JSON.stringify
 })
 ```
+
+- [ADD a new item on to a dynamodb map]
+```
+const query = new UpdateItemCommand({
+    TableName: "Table",
+    Key: {
+        "id": { S: "my-id" }
+    },
+    UpdateExpression: "ADD myMap.#key :value",
+    ExpressionAttributeNames: {
+        "#key": "new-key"
+    },
+    ExpressionAttributeValues: {
+        ":value": { S: "new-value" }
+    }
+})
+```
