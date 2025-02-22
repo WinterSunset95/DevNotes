@@ -1,5 +1,6 @@
 # Notes that are wifi/network related
 - [Adding a wifi interface](#adding-a-wifi-interface)
+- [Add IP address to interface](#add-ip-address-to-interface)
 - [Address Resolution Protocol (ARP)](#address-resolution-protocol)
 - [Changing wifi interface](#changing-wifi-interface)
 - [Deleting a wifi interface](#deleting-a-wifi-interface)
@@ -8,8 +9,10 @@
 - [OSI Network Model](#osi-network-model)
 - [Physical Transmission Modes](#physical-transmission-modes)
 - [Putting wifi interface in monitor mode](#putting-wifi-interface-in-monitor-mode)
+- [Setting up wifi and hotspot manually](#setting-up-wifi-and-hotspot-manually)
 - [TCP/IP Network Model](#tcpip-network-model)
 
+---
 ## Putting wifi interface in monitor mode
 ### Using `ip` and `iw` commands
 ```
@@ -25,17 +28,20 @@ iwconfig wlan0 mode monitor
 ifconfig wlan0 up
 ```
 
+---
 ## Adding a wifi interface
 ```
 iw phy0 interface add myAp type __ap
 ```
 - Note that there should be two underscores in '__ap'
 
+---
 ## Deleting a wifi interface
 ```
 iw dev myAp del
 ```
 
+---
 ## Changing wifi interface
 ### To managed
 ```
@@ -47,6 +53,7 @@ iw myAp set type managed
 iw myAp set type __ap
 ```
 
+---
 ## OSI Network Model
 ### The OSI (Open Systems Interconnection) model has seven layers in total
 - Layer 1, Physical Layer:
@@ -197,6 +204,7 @@ iw myAp set type __ap
         - FTP
         - DNS (Domain Name Systems)
 
+---
 ## How Data Flows in the OSI Model?
 When we transfer information from one device to another, it travels through 7 layers of OSI model. First data travels down through 7 layers from the sender's end and then climbs back 7 layers on the reciever's end.
 
@@ -248,6 +256,7 @@ Imagine loading a webpage:
 | Presentation Layer | Data from the application layer is extracted and manipulated in the reqired format for transmission. | Data | TLS/SSL, [MIME](#mime), JPEG, PNG, ASCII, etc |
 | Application Layer | Helps in identifying the client and synchronizing communication | Data | FTP, SMTP, DNS, DHCP, etc |
 
+---
 ## TCP/IP Network Model
 - Layer 1, Link Layer or Network Access Layer:
     - Handles data exchange between the device and the physical network. It corresponds to the OSI's Physical and Data Link Layers.
@@ -296,6 +305,7 @@ Imagine loading a webpage:
         - DNS (Domain Name Resolution)
     - **Devices**: Applications running on end systems
 
+---
 ## Physical Transmission Modes
 Transferring data between two devices is known as Transmission Mode. It is also known as Communication Mode.
 
@@ -315,6 +325,7 @@ Half-Duplex Mode is a balance between simplex and full-duplex modes, providing d
 ### Full-Duplex Mode
 In full-duplex mode, Sender can send the data and also recieve the data simultaneously. It is dual way communication in which both ways of communication happens at the same time. Example of this would be a Telephone Network, where communication happens in parallel.
 
+---
 ## Address Resolution Protocol
 The Address Resolution Protocol (ARP) is a network protocol used to map an IP Address to a device's MAC address (Media Access Control address) on a local area network (LAN). This process is essential because devices on a LAN use MAC addresses to communicate at the Data Link Layer (Layer 2 of OSI model), while IP addresses are used at the Network Layer (Layer 3).
 
@@ -334,6 +345,7 @@ The Address Resolution Protocol (ARP) is a network protocol used to map an IP Ad
 - Communication:
     - The sender uses the MAC address from the ARP Reply to encapsulate and send the packet to the intended recipient.
 
+---
 ## ICMP
 The **Internet Control Message Protocol (ICMP)** is a supporting protocol in the Internet Protocol suite, primarily used for error reporting and diagnostic purposes in network communciation. It facilitates troubleshooting and operational management by transmitting messages about network issues, such as unreachable destinations or time exceeded in transit.
 - ICMP operates at the Network Layer (Layer 3) of the OSI Model.
@@ -382,3 +394,78 @@ The **Internet Control Message Protocol (ICMP)** is a supporting protocol in the
         - Sends malformed ICMP packets larger than allowed, potentially crashing the target.
     - **ICMP Redirect Attacks**:
         - Manipulates routing paths, redirecting traffic to malicious nodes
+
+---
+## Setting up wifi and hotspot manually
+### Trial
+```bash
+iw dev wlan0 set power_save off
+iw dev wlan0 interface add ap0 type __ap
+ip link set dev ap0 address 4c:d5:77:d3:0a:5e
+ip link set down dev ap0
+ip addr flush ap0
+ip link set up dev ap0
+ip addr add 192.168.12.1/24 broadcast 192.168.12.255 dev ap0
+iptables -w -t nat -I POSTROUTING -s 192.168.12.0/24 '!' -o ap0 -j MASQUERADE
+iptables -w -I FORWARD -i ap0 -s 192.168.12.0/24 -j ACCEPT
+iptables -w -I FORWARD -i wlan0 -d 192.168.12.0/24 -j ACCEPT
+iptables -w -I INPUT -p tcp -m tcp --dport 5353 -j ACCEPT
+iptables -w -I INPUT -p udp -m udp --dport 5353 -j ACCEPT
+iptables -w -t nat -I PREROUTING -s 192.168.12.0/24 -d 192.168.12.1 -p tcp -m tcp --dport 53 -j REDIRECT --to-ports 5353
+iptables -w -t nat -I PREROUTING -s 192.168.12.0/24 -d 192.168.12.1 -p udp -m udp --dport 53 -j REDIRECT --to-ports 5353
+iptables -w -I INPUT -p udp -m udp --dport 67 -j ACCEPT
+```
+Didn't work..
+
+For some reason
+```bash
+iw dev wlan0 interface add ap0 type __ap
+```
+Still results in an interface in managed mode. I had to manually change the interface type to ap mode
+```bash
+iw ap0 set type __ap
+```
+Make sure that all devices are not in power_save mode
+```bash
+iw dev wlan0 set power_save off
+iw dev ap0 set power_save off
+```
+After that, In my hostapd conf
+```
+interface=ap0
+channel=48
+hw_mode=a
+driver=nl80211
+ssid=TestAP
+```
+The channel has to be the same channel as the original interface, and hw_mode has to be set to 'a' because my wifi card doesn't support multiple channels, and also doesn't support multiple radio
+
+---
+## Change channel of wifi interface
+```bash
+sudo iwconfig wlan0 channel 48
+```
+
+---
+## Bind dnsmasq to AP
+dnsmasq.conf
+```bash
+interface=ap0
+bind-interfaces
+dhcp-range=192.168.10.10,192.168.10.100,12h
+dhcp-option=3,192.168.10.1
+dhcp-option=6,192.168.10.1
+address=/#/192.168.10.1
+```
+
+---
+## Add IP address to interface
+```bash
+ip addr add 192.168.10.1/24 dev ap0
+```
+
+---
+## What is a probe request?
+- **Probe request**: When a client device scans for available WiFi networks, it sends probe requests to identify access points in the area.
+- **Hostapd's Role**: Hostapd listen for these probe requests and responds with a probe response that provides details about the AP, such as the SSID, supported features, and security settings.
+
