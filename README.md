@@ -8,12 +8,14 @@ This a horribly organized collection of notes I've written down to help me remem
 - [Linux](./linux/)
 - [WiFi](./wifi/)
 - [HackTheBox](./htb/)
-- [WebDev](./webdev)
+- [WebDev](./webdev/)
+- [OSINT](./osint/)
 
 ### Tips And Tricks
 - [Putting wifi interface in monitor mode](./wifi/#putting-wifi-interface-in-monitor-mode)
 - [Changing wifi interface mode](./wifi/#changing-wifi-interface)
 - [Changing file ownership in linux](./linux/#change-ownership-of-file)
+- [Setup wifi on linux with Hostapd and Dnsmasq](./linux/hostapd_ap_setup_guide.md)
 
 ### Great learning resources
 - [The OSI Model (Geeksforgeeks)](https://www.geeksforgeeks.org/open-systems-interconnection-model-osi/)
